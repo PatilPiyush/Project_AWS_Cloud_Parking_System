@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide: Cloud Vehicle Telemetry & Parking System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Cloud Tech (Inspired by Brilliant Blues) -->
+    <!-- Application Structure Plan: The SPA is structured as a narrative journey. It starts with a high-level overview, then presents an interactive architecture diagram allowing users to explore each component of the data flow. This is followed by a "dashboard" section that simulates the application's output, making the project's value tangible with interactive charts and a live parking grid. This thematic, interactive structure was chosen over a linear report format to better engage a technical user, facilitate non-linear exploration of components, and provide a clear visual connection between the architecture and its real-world application. -->
+    <!-- Visualization & Content Choices: 
+        - Architecture Flow: Report Info -> System Architecture Steps -> Goal: Organize -> Viz: Interactive HTML/CSS Flow Diagram -> Interaction: Click to reveal details on each step -> Justification: More engaging and explorable than a static list, visually mapping the data journey. Method: HTML/CSS with Tailwind & JS. CONFIRMS NO SVG/Mermaid.
+        - Service Roles: Report Info -> Key AWS Services -> Goal: Inform -> Viz: Toggled content cards -> Interaction: Click "Details" to expand -> Justification: Breaks down dense information into digestible, user-controlled chunks. Method: HTML/CSS with JS.
+        - System Performance: Report Info -> Implied system metrics -> Goal: Compare/Change -> Viz: Bar Chart (Latency), Line Chart (Data Throughput) -> Interaction: Hover tooltips -> Justification: Standard, effective way to show performance data. Library: Chart.js (Canvas). CONFIRMS NO SVG.
+        - Parking Status: Report Info -> Core app function (parking map) -> Goal: Inform -> Viz: Dynamic HTML Grid & KPI Display -> Interaction: Button to simulate data changes -> Justification: Provides a tangible, interactive simulation of the application's main purpose. Method: HTML/CSS with JS. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        .flow-card {
+            transition: all 0.3s ease-in-out;
+        }
+        .flow-card-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
+        }
+        .flow-card.active .flow-card-details {
+            max-height: 500px;
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        .parking-spot {
+            transition: background-color 0.3s ease;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="container mx-auto p-4 sm:p-6 md:p-8">
+        
+        <header class="text-center my-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-sky-600 mb-4">Cloud-Based Vehicle Telemetry & Parking System</h1>
+            <p class="text-lg text-slate-600 max-w-3xl mx-auto">An interactive guide to a hands-on project for AWS Solution Architects. This application visualizes a serverless architecture designed to process real-time vehicle data for smart parking management.</p>
+        </header>
+
+        <main>
+
+            <section id="architecture" class="mb-16">
+                <h2 class="text-3xl font-bold text-center mb-4">Interactive System Architecture</h2>
+                <p class="text-center max-w-3xl mx-auto mb-12 text-slate-600">This system is built on an event-driven, serverless architecture. Data flows from a simulated vehicle, through ingestion and processing layers, to storage and visualization. Click on each step below to explore its role and the AWS services involved.</p>
+
+                <div id="flow-container" class="space-y-4">
+                    <!-- Flow steps will be injected by JS -->
+                </div>
+            </section>
+            
+            <section id="dashboard" class="mb-16 bg-slate-100 p-8 rounded-2xl">
+                <h2 class="text-3xl font-bold text-center mb-4">Simulated Live Dashboard</h2>
+                <p class="text-center max-w-3xl mx-auto mb-12 text-slate-600">This dashboard simulates the real-time output of the application, providing insights into parking availability and system performance metrics. Interact with the elements to see the system in action.</p>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-center">Live Parking Availability</h3>
+                        <div class="flex items-center justify-center space-x-4 mb-4">
+                            <div class="text-center">
+                                <p class="text-4xl font-bold text-sky-600" id="available-spots-kpi">--</p>
+                                <p class="text-sm text-slate-500">Available Spots</p>
+                            </div>
+                            <div class="text-center">
+                                <p class="text-4xl font-bold text-red-500" id="occupied-spots-kpi">--</p>
+                                <p class="text-sm text-slate-500">Occupied Spots</p>
+                            </div>
+                        </div>
+                        <div id="parking-grid" class="grid grid-cols-4 gap-2 mb-4">
+                            <!-- Parking spots injected by JS -->
+                        </div>
+                        <button id="simulate-btn" class="w-full bg-sky-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-sky-700 transition-colors">Simulate Vehicle Event</button>
+                    </div>
+
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-1 text-center">Data Throughput (Last 24 Hours)</h3>
+                        <p class="text-sm text-slate-500 text-center mb-4">Simulated telemetry events processed per hour by Kinesis.</p>
+                        <div class="chart-container h-[280px]">
+                            <canvas id="throughputChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-3 bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-xl font-semibold mb-1 text-center">End-to-End Data Processing Latency</h3>
+                        <p class="text-sm text-slate-500 text-center mb-4">Average time taken for data to pass through each stage of the pipeline.</p>
+                        <div class="chart-container h-[280px]">
+                            <canvas id="latencyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center py-8 border-t border-slate-200">
+            <p class="text-slate-500">A conceptual interactive application based on the AWS Solutions Architect project.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const architectureData = [
+                {
+                    title: "Step 1: Device Simulation",
+                    icon: "🚗",
+                    description: "A Python script running on a local machine acts as the 'vehicle device.' It generates mock sensor data (e.g., GPS coordinates, ultrasonic sensor readings indicating parking status) and publishes it securely to an AWS IoT topic using the MQTT protocol.",
+                    service: "Python, paho-mqtt"
+                },
+                {
+                    title: "Step 2: Data Ingestion",
+                    icon: "📥",
+                    description: "AWS IoT Core serves as the secure, managed cloud gateway. It authenticates the device and ingests the incoming JSON data payloads. An IoT Rule is configured to trigger on this topic, forwarding the data to a real-time processing stream.",
+                    service: "AWS IoT Core"
+                },
+                {
+                    title: "Step 3: Real-time Processing",
+                    icon: "⚙️",
+                    description: "Amazon Kinesis Data Streams receives the data from the IoT Rule. This service is designed for high-throughput, real-time processing of streaming data, allowing multiple consumer applications to process the data concurrently.",
+                    service: "Amazon Kinesis Data Streams"
+                },
+                {
+                    title: "Step 4: Business Logic & Data Storage",
+                    icon: "💾",
+                    description: "An AWS Lambda function is triggered by new data in the Kinesis stream. It contains the core business logic to parse the sensor data and determine parking spot status. It updates a DynamoDB table with the real-time status and archives the raw telemetry data in an S3 bucket for long-term storage and analysis.",
+                    service: "AWS Lambda, Amazon DynamoDB, Amazon S3"
+                },
+                {
+                    title: "Step 5: Data Visualization",
+                    icon: "📊",
+                    description: "An Amazon API Gateway endpoint provides a REST API. A separate Lambda function, triggered by API Gateway, queries the DynamoDB table for the current parking status. A simple static website, hosted on S3, calls this API to display a live map of parking availability.",
+                    service: "Amazon API Gateway, AWS Lambda, Amazon S3"
+                }
+            ];
+
+            const flowContainer = document.getElementById('flow-container');
+            architectureData.forEach((step, index) => {
+                const isLast = index === architectureData.length - 1;
+                const cardHTML = `
+                    <div class="flow-card bg-white rounded-lg shadow-md cursor-pointer hover:shadow-xl hover:bg-sky-50" data-index="${index}">
+                        <div class="p-4 flex items-center">
+                            <div class="text-3xl mr-4">${step.icon}</div>
+                            <div class="flex-grow">
+                                <h3 class="text-xl font-semibold text-sky-700">${step.title}</h3>
+                                <p class="text-sm text-slate-500">Key Service: ${step.service}</p>
+                            </div>
+                            <div class="arrow-indicator text-2xl text-slate-400 transform transition-transform duration-300">▼</div>
+                        </div>
+                        <div class="flow-card-details px-6 text-slate-600">
+                            <p>${step.description}</p>
+                        </div>
+                    </div>
+                    ${!isLast ? '<div class="flex justify-center"><div class="text-2xl text-slate-300 font-bold">↓</div></div>' : ''}
+                `;
+                flowContainer.innerHTML += cardHTML;
+            });
+            
+            document.querySelectorAll('.flow-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const currentlyActive = document.querySelector('.flow-card.active');
+                    if(currentlyActive && currentlyActive !== card) {
+                        currentlyActive.classList.remove('active');
+                        currentlyActive.querySelector('.arrow-indicator').style.transform = 'rotate(0deg)';
+                    }
+                    card.classList.toggle('active');
+                    const arrow = card.querySelector('.arrow-indicator');
+                    arrow.style.transform = card.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
+                });
+            });
+
+            const parkingGrid = document.getElementById('parking-grid');
+            const availableKpi = document.getElementById('available-spots-kpi');
+            const occupiedKpi = document.getElementById('occupied-spots-kpi');
+            const simulateBtn = document.getElementById('simulate-btn');
+            const totalSpots = 24;
+            let spots = new Array(totalSpots).fill(false);
+
+            function initializeParking() {
+                for(let i = 0; i < 10; i++){
+                    spots[Math.floor(Math.random() * totalSpots)] = true;
+                }
+                renderParking();
+            }
+
+            function renderParking() {
+                parkingGrid.innerHTML = '';
+                let occupiedCount = 0;
+                spots.forEach((isOccupied, index) => {
+                    const spotEl = document.createElement('div');
+                    spotEl.classList.add('parking-spot', 'h-10', 'rounded', 'flex', 'items-center', 'justify-center', 'text-white', 'font-bold', 'text-sm');
+                    spotEl.classList.add(isOccupied ? 'bg-red-500' : 'bg-emerald-500');
+                    spotEl.textContent = `P${index + 1}`;
+                    parkingGrid.appendChild(spotEl);
+                    if (isOccupied) occupiedCount++;
+                });
+                availableKpi.textContent = totalSpots - occupiedCount;
+                occupiedKpi.textContent = occupiedCount;
+            }
+
+            simulateBtn.addEventListener('click', () => {
+                const randomIndex = Math.floor(Math.random() * totalSpots);
+                spots[randomIndex] = !spots[randomIndex];
+                renderParking();
+            });
+
+            initializeParking();
+
+            const tooltipConfig = {
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                const item = tooltipItems[0];
+                                let label = item.chart.data.labels[item.dataIndex];
+                                if (Array.isArray(label)) {
+                                    return label.join(' ');
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            };
+
+            const throughputCtx = document.getElementById('throughputChart').getContext('2d');
+            new Chart(throughputCtx, {
+                type: 'line',
+                data: {
+                    labels: ['-24h', '-21h', '-18h', '-15h', '-12h', '-9h', '-6h', '-3h', 'Now'],
+                    datasets: [{
+                        label: 'Events Processed',
+                        data: [120, 150, 220, 300, 450, 500, 380, 600, 750],
+                        borderColor: '#0284c7', /* sky-600 */
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } },
+                    ...tooltipConfig
+                }
+            });
+
+            const latencyCtx = document.getElementById('latencyChart').getContext('2d');
+            new Chart(latencyCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['IoT Ingestion', 'Kinesis Stream', 'Lambda Logic', 'DynamoDB Write'],
+                    datasets: [{
+                        label: 'Avg. Latency (ms)',
+                        data: [25, 60, 110, 45],
+                        backgroundColor: ['#0ea5e9', '#0284c7', '#0369a1', '#075985'],
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } },
+                    plugins: {
+                        legend: { display: false },
+                        ...tooltipConfig.plugins
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
